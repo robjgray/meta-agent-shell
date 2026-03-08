@@ -1026,15 +1026,6 @@ outgoing-request-decorator, so they persist across context compaction."
           (when (boundp 'agent-shell--state)
             (setq agent-shell--state
                   (map-insert agent-shell--state :outgoing-request-decorator decorator))))
-        ;; Send initial message to keep the session alive
-        (with-current-buffer buf
-          (run-at-time 0.5 nil
-                       (lambda (b)
-                         (when (buffer-live-p b)
-                           (with-current-buffer b
-                             (shell-maker-submit
-                              :input "You are the dispatcher for this project. Wait for instructions."))))
-                       buf))
         ;; Register dispatcher
         (push (cons project-path buf) meta-agent-shell--dispatchers)
         (message "Dispatcher started for %s (instructions in system prompt)" project-name)
@@ -1055,12 +1046,13 @@ If no dispatcher exists, offer to create one."
         (message "No dispatcher for this project")))))
 
 ;;;###autoload
-(defun meta-agent-shell-start-or-dispatcher ()
+(defun meta-agent-shell-start-or-dispatcher (arg)
   "Start a dispatcher or normal agent shell for the current project.
 If in the meta-agent directory, start the meta-agent instead.
 If no dispatcher exists for the project, start one.
-If a dispatcher already exists, start a normal agent shell."
-  (interactive)
+If a dispatcher already exists, start a normal agent shell.
+Prefix ARG is passed through to the start function."
+  (interactive "P")
   (let* ((project-path (expand-file-name (meta-agent-shell--get-project-path)))
          (meta-path (expand-file-name meta-agent-shell-directory)))
     ;; Check if we're in the meta-agent directory
@@ -1070,8 +1062,11 @@ If a dispatcher already exists, start a normal agent shell."
       (let ((entry (assoc project-path meta-agent-shell--dispatchers)))
         (if (and entry (buffer-live-p (cdr entry)))
             ;; Dispatcher exists, start normal agent shell
-            (let ((default-directory project-path))
-              (apply meta-agent-shell-start-function meta-agent-shell-start-function-args))
+            (let ((default-directory project-path)
+                  (args (if arg
+                            (cons arg (cdr meta-agent-shell-start-function-args))
+                          meta-agent-shell-start-function-args)))
+              (apply meta-agent-shell-start-function args))
           ;; No dispatcher, start one
           (meta-agent-shell-start-dispatcher project-path))))))
 
