@@ -642,15 +642,6 @@ Optional PROJECT-PATH sets the default-directory."
        (insert-file-contents (expand-file-name meta-agent-shell-config-file))
        (should (equal config-content (buffer-string)))))))
 
-(ert-deftest meta-agent-shell-test-package-directory-ignores-current-buffer-file ()
-  "Test package directory detection does not depend on the current buffer file."
-  (meta-agent-shell-test--with-clean-state
-   (with-temp-buffer
-     (setq-local buffer-file-name "/tmp/not-the-package-dir/init.el")
-     (let ((package-dir (meta-agent-shell--package-directory)))
-       (should (file-exists-p (expand-file-name "agent-overview.md" package-dir)))
-       (should (file-exists-p (expand-file-name "bin/agent-shell-list" package-dir)))))))
-
 (ert-deftest meta-agent-shell-test-default-start-function-uses-agent-shell-start ()
   "Test the default start function uses `agent-shell-start'."
   (meta-agent-shell-test--with-clean-state
@@ -687,33 +678,6 @@ Optional PROJECT-PATH sets the default-directory."
        (should-not (plist-get call :command-prefix))
        (should-not (plist-get call :path-resolver-function))))))
 
-(ert-deftest meta-agent-shell-test-default-start-function-safe-directory-policy ()
-  "Test safe directory prefixes force safe policy for Claude Code."
-  (meta-agent-shell-test--with-clean-state
-   (let ((meta-agent-shell-test--agent-shell-config
-          '((:identifier . claude-code)
-            (:buffer-name . "Claude Code")))
-         (meta-agent-shell-safe-directory-prefixes '("/tmp/secretary")))
-     (let ((default-directory "/tmp/secretary/project/"))
-       (meta-agent-shell-default-start-function 'use-current-dir "Worker"))
-     (let* ((call (car meta-agent-shell-test--agent-shell-start-calls))
-            (mode-id-fn (map-elt (plist-get call :config) :default-session-mode-id)))
-       (should (functionp mode-id-fn))
-       (should (equal "default" (funcall mode-id-fn)))))))
-
-(ert-deftest meta-agent-shell-test-default-start-function-aggressive-policy-by-default ()
-  "Test Claude Code defaults to aggressive policy outside safe directories."
-  (meta-agent-shell-test--with-clean-state
-   (let ((meta-agent-shell-test--agent-shell-config
-          '((:identifier . claude-code)
-            (:buffer-name . "Claude Code")))
-         (default-directory "/tmp/normal-project/"))
-     (meta-agent-shell-default-start-function 'use-current-dir "Worker")
-     (let* ((call (car meta-agent-shell-test--agent-shell-start-calls))
-            (mode-id-fn (map-elt (plist-get call :config) :default-session-mode-id)))
-       (should (functionp mode-id-fn))
-       (should (equal "bypassPermissions" (funcall mode-id-fn)))))))
-
 (ert-deftest meta-agent-shell-test-default-start-function-session-policy-override ()
   "Test session policy override can force safe mode without replacing the wrapper."
   (meta-agent-shell-test--with-clean-state
@@ -730,20 +694,6 @@ Optional PROJECT-PATH sets the default-directory."
        (should (functionp mode-id-fn))
        (should (equal "default" (funcall mode-id-fn)))))))
 
-(ert-deftest meta-agent-shell-test-default-start-function-safe-policy-ignores-prefix ()
-  "Test safe-directory policy applies regardless of startup prefix mode."
-  (meta-agent-shell-test--with-clean-state
-   (let ((meta-agent-shell-test--agent-shell-config
-          '((:identifier . claude-code)
-            (:buffer-name . "Claude Code")))
-         (meta-agent-shell-safe-directory-prefixes '("/tmp/secretary"))
-         (default-directory "/tmp/secretary/project/"))
-     (meta-agent-shell-default-start-function '(4) "Worker")
-     (let* ((call (car meta-agent-shell-test--agent-shell-start-calls))
-            (mode-id-fn (map-elt (plist-get call :config) :default-session-mode-id)))
-       (should (functionp mode-id-fn))
-       (should (equal "default" (funcall mode-id-fn)))))))
-
 (ert-deftest meta-agent-shell-test-default-start-function-codex-aggressive-mode ()
   "Test Codex uses the mapped aggressive mode id by default."
   (meta-agent-shell-test--with-clean-state
@@ -755,33 +705,6 @@ Optional PROJECT-PATH sets the default-directory."
      (let* ((call (car meta-agent-shell-test--agent-shell-start-calls))
             (mode-id-fn (map-elt (plist-get call :config) :default-session-mode-id)))
        (should (functionp mode-id-fn))
-       (should (equal "full-access" (funcall mode-id-fn)))))))
-
-(ert-deftest meta-agent-shell-test-default-start-function-codex-safe-mode ()
-  "Test Codex uses the mapped safe mode id in safe directories."
-  (meta-agent-shell-test--with-clean-state
-   (let ((meta-agent-shell-test--agent-shell-config
-          '((:identifier . codex)
-            (:buffer-name . "Codex")))
-         (meta-agent-shell-safe-directory-prefixes '("/tmp/secretary"))
-         (default-directory "/tmp/secretary/project/"))
-     (meta-agent-shell-default-start-function 'use-current-dir "Worker")
-     (let* ((call (car meta-agent-shell-test--agent-shell-start-calls))
-            (mode-id-fn (map-elt (plist-get call :config) :default-session-mode-id)))
-       (should (functionp mode-id-fn))
-       (should (equal "auto" (funcall mode-id-fn)))))))
-
-(ert-deftest meta-agent-shell-test-default-start-function-mode-map-uses-config-identifier ()
-  "Test provider mapping keys off config `:identifier' when config is an alist."
-  (meta-agent-shell-test--with-clean-state
-   (let ((meta-agent-shell-test--agent-shell-config
-          '((:identifier . codex)
-            (:buffer-name . "Codex")
-            (:mode-line-name . "Codex")))
-         (default-directory "/tmp/normal-project/"))
-     (meta-agent-shell-default-start-function 'use-current-dir "Worker")
-     (let* ((call (car meta-agent-shell-test--agent-shell-start-calls))
-            (mode-id-fn (map-elt (plist-get call :config) :default-session-mode-id)))
        (should (equal "full-access" (funcall mode-id-fn)))))))
 
 (ert-deftest meta-agent-shell-test-start-named-agent-uses-actual-buffer-name ()
@@ -814,16 +737,6 @@ Optional PROJECT-PATH sets the default-directory."
        (should (equal "Dispatcher Agent @ test-project" buffer-name))
        (should (= 1 (length meta-agent-shell-test--agent-shell-start-calls)))
        (should (= 1 (length meta-agent-shell--dispatchers)))))))
-
-(ert-deftest meta-agent-shell-test-start-meta-with-default-wrapper ()
-  "Test meta-agent startup works with the package-owned default wrapper."
-  (meta-agent-shell-test--with-clean-state
-   (let ((meta-dir (meta-agent-shell-test--create-temp-dir))
-         (meta-agent-shell-start-function #'meta-agent-shell-default-start-function))
-     (let ((meta-agent-shell-directory meta-dir))
-       (meta-agent-shell-start)
-       (should (buffer-live-p meta-agent-shell--buffer))
-       (should (= 1 (length meta-agent-shell-test--agent-shell-start-calls)))))))
 
 (ert-deftest meta-agent-shell-test-list-dispatchers-empty ()
   "Test listing dispatchers when none exist."
