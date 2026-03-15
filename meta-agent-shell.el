@@ -5,7 +5,7 @@
 ;; Author: Elle Najt
 ;; URL: https://github.com/ElleNajt/meta-agent-shell
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "29.1") (agent-shell "0.33.1"))
+;; Package-Requires: ((emacs "29.1") (agent-shell "0.46.1"))
 ;; Keywords: convenience, tools, ai
 
 ;; This file is not part of GNU Emacs.
