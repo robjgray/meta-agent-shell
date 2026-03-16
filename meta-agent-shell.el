@@ -269,13 +269,23 @@ Uses projectile if available, otherwise `default-directory'."
 
 (defun meta-agent-shell--find-buffer-by-project (project-name)
   "Find agent-shell buffer for PROJECT-NAME.
+Prefers the dispatcher for the project if one exists.
 Returns the buffer or nil if not found."
-  (cl-find-if (lambda (buf)
-                (with-current-buffer buf
-                  (let* ((project-path (meta-agent-shell--get-project-path))
-                         (name (file-name-nondirectory (directory-file-name project-path))))
-                    (string-equal-ignore-case name project-name))))
-              (meta-agent-shell--active-buffers)))
+  (let* ((project-path
+          (cl-loop for (path . buf) in meta-agent-shell--dispatchers
+                   when (string-equal-ignore-case
+                         (file-name-nondirectory (directory-file-name path))
+                         project-name)
+                   return path))
+         (dispatcher (cdr (assoc project-path meta-agent-shell--dispatchers))))
+    (if (and dispatcher (buffer-live-p dispatcher))
+        dispatcher
+      (cl-find-if (lambda (buf)
+                    (with-current-buffer buf
+                      (let* ((pp (meta-agent-shell--get-project-path))
+                             (name (file-name-nondirectory (directory-file-name pp))))
+                        (string-equal-ignore-case name project-name))))
+                  (meta-agent-shell--active-buffers)))))
 
 (defvar meta-agent-shell--initial-tasks (make-hash-table :test 'equal)
   "Hash table mapping buffer names to their initial task messages.
