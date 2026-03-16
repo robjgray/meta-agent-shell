@@ -138,6 +138,21 @@ Dispatchers route messages to the appropriate agent within a project.")
 Only checked when `meta-agent-shell-restrict-targets' is non-nil.
 Use `meta-agent-shell-allow-target' to add buffers.")
 
+(defvar meta-agent-shell--pending-decorator nil
+  "Dynamically bound decorator to inject into `agent-shell-start' calls.
+Used by `meta-agent-shell-start' and `meta-agent-shell-start-dispatcher'
+to pass the outgoing-request-decorator through custom start functions.")
+
+(defun meta-agent-shell--inject-decorator (orig-fn &rest args)
+  "Advice for `agent-shell-start' to inject a pending decorator.
+When `meta-agent-shell--pending-decorator' is non-nil, passes it as
+the :outgoing-request-decorator keyword argument."
+  (if meta-agent-shell--pending-decorator
+      (apply orig-fn :outgoing-request-decorator meta-agent-shell--pending-decorator args)
+    (apply orig-fn args)))
+
+(advice-add 'agent-shell-start :around #'meta-agent-shell--inject-decorator)
+
 ;;; Target Restrictions
 
 (defun meta-agent-shell-allow-target (buffer-name)
@@ -490,16 +505,13 @@ Config from `meta-agent-shell-config-file' is included."
     (let* ((default-directory (expand-file-name meta-agent-shell-directory))
            (base-instructions (meta-agent-shell--meta-instructions))
            (session-meta `((systemPrompt . ((append . ,base-instructions)))))
-           (decorator (meta-agent-shell--make-session-meta-decorator session-meta)))
+           (meta-agent-shell--pending-decorator
+            (meta-agent-shell--make-session-meta-decorator session-meta)))
       ;; Ensure directory exists
       (make-directory default-directory t)
       (apply meta-agent-shell-start-function meta-agent-shell-start-function-args)
       ;; Track this as the meta buffer
       (setq meta-agent-shell--buffer (current-buffer))
-      ;; Inject instructions via outgoing-request-decorator
-      (when (boundp 'agent-shell--state)
-        (setq agent-shell--state
-              (map-insert agent-shell--state :outgoing-request-decorator decorator)))
       (message "Meta-agent session started in %s" default-directory))))
 
 ;;;###autoload
@@ -1006,7 +1018,8 @@ outgoing-request-decorator, so they persist across context compaction."
              (default-directory project-path)
              (instructions meta-agent-shell--dispatcher-instructions)
              (session-meta `((systemPrompt . ((append . ,instructions)))))
-             (decorator (meta-agent-shell--make-session-meta-decorator session-meta))
+             (meta-agent-shell--pending-decorator
+              (meta-agent-shell--make-session-meta-decorator session-meta))
              (buf nil))
         ;; Use the configured start function to create the buffer
         (condition-case err
@@ -1020,12 +1033,6 @@ outgoing-request-decorator, so they persist across context compaction."
                     (car meta-agent-shell-start-function-args)
                     dispatcher-buffer-name)))
         (setq buf (current-buffer))
-        ;; Set outgoing-request-decorator BEFORE the first prompt
-        ;; This injects _meta with systemPrompt on session/new
-        (with-current-buffer buf
-          (when (boundp 'agent-shell--state)
-            (setq agent-shell--state
-                  (map-insert agent-shell--state :outgoing-request-decorator decorator))))
         ;; Register dispatcher
         (push (cons project-path buf) meta-agent-shell--dispatchers)
         (message "Dispatcher started for %s (instructions in system prompt)" project-name)
