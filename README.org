@@ -49,6 +49,11 @@ Then run:
 M-x meta-agent-shell-setup
 #+end_example
 
+This:
+1. Creates =~/.claude-meta/= directory
+2. Links the meta-agent CLAUDE.md
+3. Tells you what to add to your shell config and =~/.claude/CLAUDE.md=
+
 * Startup wrapper
 
 By default, =meta-agent-shell= uses its own wrapper ~meta-agent-shell-default-start-function~
