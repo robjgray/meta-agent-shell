@@ -22,7 +22,9 @@ Plus:
 
 * Setup
 
-Add to your Emacs config:
+First install =meta-agent-shell= from a local checkout or package recipe that includes
+the non-Elisp files this repo needs (=bin/=, =agent-overview.md=, =meta-claude.md=,
+=shared-tools.md=). Then add this to your Emacs config:
 
 #+begin_src elisp
 (use-package meta-agent-shell
@@ -41,6 +43,16 @@ Add to your Emacs config:
          :desc "Stop heartbeat" "H" #'meta-agent-shell-heartbeat-stop
          :desc "Send heartbeat now" "s" #'meta-agent-shell-heartbeat-send-now
          :desc "STOP ALL AGENTS" "!" #'meta-agent-shell-big-red-button)))
+#+end_src
+
+A Quelpa example of including the non-Elisp files:
+
+#+begin_src elisp
+:files (:defaults
+        ("bin" "bin/*")
+        "agent-overview.md"
+        "meta-claude.md"
+        "shared-tools.md")
 #+end_src
 
 Then run:
