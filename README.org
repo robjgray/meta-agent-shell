@@ -83,7 +83,7 @@ The wrapper binds dynamic context variables:
 | ~meta-agent-shell-start-context~                | Package-managed start context, typically ~meta~, ~dispatcher~, or ~named-agent~.                                                               |
 | ~meta-agent-shell-start-directory~              | Directory the session will start in; the wrapper binds ~default-directory~ to this value before calling ~agent-shell-start~.                   |
 | ~meta-agent-shell-start-buffer-name~            | Optional buffer name override inserted into the resolved ~agent-shell~ config before startup.                                                  |
-| ~meta-agent-shell-start-session-policy~         | Abstract startup policy, ~safe~, ~auto~ (default), or ~aggressive~. Translated through ~meta-agent-shell-session-mode-map~ for equivalent behavior across models. |
+| ~meta-agent-shell-start-session-policy~         | Abstract startup policy, ~safe~, ~auto~ (default), or ~aggressive~. Translated through ~meta-agent-shell-session-mode-map~ for equivalent behavior across agents. |
 | ~meta-agent-shell-start-session-mode-id~        | Optional provider mode id override. When non-nil, this takes precedence over ~meta-agent-shell-start-session-policy~ and is passed through directly. |
 | ~meta-agent-shell-start-command-prefix~         | Optional command prefix to install for the new session, for example ~claudebox --bash -c~.                                                     |
 | ~meta-agent-shell-start-path-resolver-function~ | Optional path resolver function installed for the new session buffer.                                                                          |
